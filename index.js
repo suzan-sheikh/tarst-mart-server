@@ -9,7 +9,7 @@ app.use(express.json());
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.xm07hcd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ykkxidd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -21,11 +21,11 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    const database = client.db("trendmart");
-    const productsCollections = database.collection("Products");
+    const database = client.db("trust-mart");
+    const productsCollections = database.collection("emart");
 
     app.get("/", (req, res) => {
-      res.send("trendmart");
+      res.send("trust-mart");
     });
 
     app.get("/products", async (req, res) => {
