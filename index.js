@@ -31,10 +31,72 @@ async function run() {
     app.get("/",(req,res)=>{
       res.send("trendmart")
      })
-    app.get("/products",async(req,res)=>{
-      const result = await productsCollections.find().toArray();
-      res.send(result);
-     })
+     app.get("/products", async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page);
+      const search = req.query.search || '';
+      const sortBy = req.query.sortBy || 'price';
+      const sortOrder = req.query.sortOrder || 'asc';
+      const brand = req.query.brand || '';
+      const category = req.query.category || '';
+      const minPrice = parseFloat(req.query.minPrice) || 0;
+      const maxPrice = parseFloat(req.query.maxPrice) || Infinity;
+    
+      const query = {
+        ...(search && { name: { $regex: search, $options: "i" } }),
+        ...(brand && { brand: brand }),
+        ...(category && { category: category }),
+        price: { $gte: minPrice, $lte: maxPrice }
+      };
+    
+      let sortCriteria = {};
+      if (sortBy === 'price') {
+        sortCriteria = { price: sortOrder === 'asc' ? 1 : -1 };
+      } else if (sortBy === 'date') {
+        sortCriteria = { created_at: sortOrder === 'asc' ? 1 : -1 };
+      }
+    
+      try {
+        const result = await productsCollections.find(query)
+          .sort(sortCriteria)
+          .skip(size * page)
+          .limit(size)
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        res.status(500).send({ message: "Error fetching products" });
+      }
+    });
+    
+    
+    
+    app.get("/products/count", async (req, res) => {
+      const search = req.query.search || ''; // Get search term from query
+      const query = { name: { $regex: search, $options: "i" } }; // Filter by name
+    
+      try {
+        const count = await productsCollections.countDocuments(query); // Get count of matching products
+        res.send({ count });
+      } catch (error) {
+        console.error("Error fetching product count:", error);
+        res.status(500).send({ message: "Error fetching product count" });
+      }
+    });
+    app.get("/products/property", async (req, res) => {
+      const search = req.query.search || ''; // Get search term from query
+      const query = { name: { $regex: search, $options: "i" } }; // Filter by name
+    
+      try {
+        const result = await productsCollections.find(query).toArray(); 
+        res.send({ result });
+      } catch (error) {
+        console.error("Error fetching product count:", error);
+        res.status(500).send({ message: "Error fetching product count" });
+      }
+    });
+    
+    
      
      
     // Send a ping to confirm a successful connection
