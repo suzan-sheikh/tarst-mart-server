@@ -7,13 +7,10 @@ app.use(cors());
 app.use(express.json());
 
 require("dotenv").config();
-const port =  process.env.PORT || 5000;
-
-
+const port = process.env.PORT || 5000;
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.xm07hcd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -24,14 +21,14 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
     const database = client.db("trendmart");
     const productsCollections = database.collection("Products");
-    app.get("/",(req,res)=>{
-      res.send("trendmart")
-     })
-     app.get("/products", async (req, res) => {
+
+    app.get("/", (req, res) => {
+      res.send("trendmart");
+    });
+
+    app.get("/products", async (req, res) => {
       const size = parseInt(req.query.size);
       const page = parseInt(req.query.page);
       const search = req.query.search || '';
@@ -41,65 +38,74 @@ async function run() {
       const category = req.query.category || '';
       const minPrice = parseFloat(req.query.minPrice) || 0;
       const maxPrice = parseFloat(req.query.maxPrice) || Infinity;
-    
+
       const query = {
         ...(search && { name: { $regex: search, $options: "i" } }),
         ...(brand && { brand: brand }),
         ...(category && { category: category }),
         price: { $gte: minPrice, $lte: maxPrice }
       };
-    
+
       let sortCriteria = {};
       if (sortBy === 'price') {
         sortCriteria = { price: sortOrder === 'asc' ? 1 : -1 };
       } else if (sortBy === 'date') {
         sortCriteria = { created_at: sortOrder === 'asc' ? 1 : -1 };
       }
-    
+
       try {
+        const count = await productsCollections.countDocuments(query);
         const result = await productsCollections.find(query)
           .sort(sortCriteria)
           .skip(size * page)
           .limit(size)
           .toArray();
-        res.send(result);
+        res.send({
+          products: result,
+          totalPages: Math.ceil(count / size)
+        });
       } catch (error) {
         console.error("Error fetching products:", error);
         res.status(500).send({ message: "Error fetching products" });
       }
     });
-    
-    
-    
+
     app.get("/products/count", async (req, res) => {
-      const search = req.query.search || ''; // Get search term from query
-      const query = { name: { $regex: search, $options: "i" } }; // Filter by name
-    
+      const search = req.query.search || '';
+      const brand = req.query.brand || '';
+      const category = req.query.category || '';
+      const minPrice = parseFloat(req.query.minPrice) || 0;
+      const maxPrice = parseFloat(req.query.maxPrice) || Infinity;
+
+      const query = {
+        ...(search && { name: { $regex: search, $options: "i" } }),
+        ...(brand && { brand: brand }),
+        ...(category && { category: category }),
+        price: { $gte: minPrice, $lte: maxPrice }
+      };
+
       try {
-        const count = await productsCollections.countDocuments(query); // Get count of matching products
+        const count = await productsCollections.countDocuments(query);
         res.send({ count });
       } catch (error) {
         console.error("Error fetching product count:", error);
         res.status(500).send({ message: "Error fetching product count" });
       }
     });
+
     app.get("/products/property", async (req, res) => {
-      const search = req.query.search || ''; // Get search term from query
-      const query = { name: { $regex: search, $options: "i" } }; // Filter by name
-    
+      const search = req.query.search || '';
+      const query = { name: { $regex: search, $options: "i" } };
+
       try {
-        const result = await productsCollections.find(query).toArray(); 
+        const result = await productsCollections.find(query).toArray();
         res.send({ result });
       } catch (error) {
-        console.error("Error fetching product count:", error);
-        res.status(500).send({ message: "Error fetching product count" });
+        console.error("Error fetching product properties:", error);
+        res.status(500).send({ message: "Error fetching product properties" });
       }
     });
-    
-    
-     
-     
-    // Send a ping to confirm a successful connection
+
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
